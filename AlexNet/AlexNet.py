@@ -18,9 +18,16 @@ y_tr = np.array(y_tr)
 
 x_te = dict1['data']
 y_te = dict1['labels']
-print(x_te.shape)
+#print(y_te)
 xtr_rows = x_tr.reshape(x_tr.shape[0], 32 * 32 * 3) # xtr_rows becomes 50000 x 3072
 xte_rows = x_te.reshape(x_te.shape[0], 32 * 32 * 3) 
+
+def getOneHotLabel(label, depth):          #Usage: getOneHotLabel(label,depth=10)
+    m = np.zeros([len(label), depth])
+    for i in range(len(label)):
+        m[i][label[i]] = 1
+    return m
+print(getOneHotLabel(y_te,depth=10))
 
 learning_rate = 1e-4                   # learning rate
 num_epoch = 100                        # the num of epochs
@@ -91,9 +98,4 @@ class AlexNet(tf.keras.Model):
         return x
 
     def predict(self, inputs):
-        logits = self(inputs)
-
-
-
-
-        
+        logits = self(inputs)     
