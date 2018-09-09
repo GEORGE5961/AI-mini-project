@@ -27,15 +27,73 @@ num_epoch = 100                        # the num of epochs
 batch_size = 1024                      # the num of images processed one time
 dropout_rate = 0.5                     # the possibility of dropout
 class_num = 10                         # the num of classes
-train_layers = ['fc8', 'fc7', 'fc6']   # train layers
 display_step = 20                      # the steps of display
 
-class AlexNetModel(tf.keras.Model):
+class AlexNet(tf.keras.Model):
     def __init__(self):
         super().__init__()
         self.conv1 = tf.keras.layers.Conv2D(
-            filters=32,             # 卷积核数目
-            kernel_size=[5, 5],     # 感受野大小
+            filters=24,             # 卷积核数目
+            kernel_size=[3, 3],     # 感受野大小
             padding="same",         # padding策略
             activation=tf.nn.relu   # 激活函数
         )
+        self.lrn1 = tf.keras.layers.BatchNormalization(axis=1, momentum=0.99, epsilon=0.001, center=True, scale=True)
+        self.pool1 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=1)
+        self.conv2 = tf.keras.layers.Conv2D(
+            filters=96,             
+            kernel_size=[3, 3],    
+            padding="same",         
+            activation=tf.nn.relu   
+        )
+        self.lrn2 = tf.keras.layers.BatchNormalization(axis=1, momentum=0.99, epsilon=0.001, center=True, scale=True)
+        self.pool2 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=2)
+        self.conv3 = tf.keras.layers.Conv2D(
+            filters=192,             
+            kernel_size=[3, 3],     
+            padding="same",         
+            activation=tf.nn.relu   
+        )
+        self.conv4 = tf.keras.layers.Conv2D(
+            filters=192,             
+            kernel_size=[3, 3],     
+            padding="same",         
+            activation=tf.nn.relu   
+        )
+        self.conv5 = tf.keras.layers.Conv2D(
+            filters=96,             
+            kernel_size=[3, 3],     
+            padding="same",         
+            activation=tf.nn.relu   
+        )
+        self.pool5 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=2)
+        self.fc6 = tf.keras.layers.Dense(units=1024, activation=tf.nn.relu)
+        self.fc7 = tf.keras.layers.Dense(units=1024, activation=tf.nn.relu)
+        self.fc8 = tf.keras.layers.Dense(units=10)
+        self.flatten = tf.keras.layers.Reshape(target_shape=(4 * 4 * 96,))
+
+    def call(self,input):
+        input = tf.reshape(input, [-1, 32, 32, 1])  
+        x = self.conv1(input)   #[batch_size, 32, 32, 24]
+        x = self.lrn1(x)        #[batch_size, 32, 32, 24]
+        x = self.pool1(x)       #[batch_size, 16, 16, 24]
+        x = self.conv2(x)       #[batch_size, 16, 16, 96]
+        x = self.lrn2(x)        #[batch_size, 16, 16, 96]
+        x = self.pool2(x)       #[batch_size, 8, 8, 96]
+        x = self.conv3(x)       #[batch_size, 8, 8, 192]
+        x = self.conv4(x)       #[batch_size, 8, 8, 192]
+        x = self.conv5(x)       #[batch_size, 8, 8, 96]
+        x = self.pool5(x)       #[batch_size, 4, 4, 96]
+        x = self.flatten(x)     #[batch_size, 4*4*96]
+        x = self.fc6(x)         # [batch_size, 1024]
+        x = self.fc7(x)         # [batch_size, 1024]
+        x = self.fc8(x)         # [batch_size, 10]
+        return x
+
+    def predict(self, inputs):
+        logits = self(inputs)
+
+
+
+
+        
