@@ -13,21 +13,35 @@ dict1 = unpickle('/Users/wuzhengyu/Desktop/github/AI-mini-project/AlexNet/cifar1
 
 x_tr =  dict['data']
 y_tr =  dict['labels']
-x_tr = np.array(x_tr)
+x_tr = np.array(x_tr,dtype=np.float32) #/ 255.0
 y_tr = np.array(y_tr)
 
-x_te = dict1['data']
-y_te = dict1['labels']
-#print(y_te)
-xtr_rows = x_tr.reshape(x_tr.shape[0], 32 * 32 * 3) # xtr_rows becomes 50000 x 3072
-xte_rows = x_te.reshape(x_te.shape[0], 32 * 32 * 3) 
+x_ev = dict1['data'] 
+y_ev = dict1['labels']
+x_ev = np.array(x_ev, dtype=np.float32) #/ 255.0
+y_ev = np.array(y_ev, dtype=np.int32)
+#xtr_rows = x_tr.reshape(x_tr.shape[0], 32 * 32 * 3) # xtr_rows becomes 50000 x 3072
+#xte_rows = x_te.reshape(x_te.shape[0], 32 * 32 * 3) 
 
+'''
 def getOneHotLabel(label, depth):          #Usage: getOneHotLabel(label,depth=10)
     m = np.zeros([len(label), depth])
     for i in range(len(label)):
         m[i][label[i]] = 1
     return m
 print(getOneHotLabel(y_te,depth=10))
+'''
+
+class DataLoader():
+    def __init__(self):
+        self.train_data = x_tr                                 # np.array [10000, 3024]
+        self.train_labels = y_tr                               # np.array [10000] of int32
+        self.eval_data = x_ev                                  # np.array [10000, 784]
+        self.eval_labels = y_ev                                # np.array [10000] of int32
+
+    def get_batch(self, batch_size):
+        index = np.random.randint(0, np.shape(self.train_data)[0], batch_size)
+        return self.train_data[index, :], self.train_labels[index]
 
 learning_rate = 1e-4                   # learning rate
 num_epoch = 100                        # the num of epochs
@@ -35,6 +49,7 @@ batch_size = 1024                      # the num of images processed one time
 dropout_rate = 0.5                     # the possibility of dropout
 class_num = 10                         # the num of classes
 display_step = 20                      # the steps of display
+num_batches = 5                        
 
 class AlexNet(tf.keras.Model):
     def __init__(self):
@@ -46,7 +61,7 @@ class AlexNet(tf.keras.Model):
             activation=tf.nn.relu   # 激活函数
         )
         self.lrn1 = tf.keras.layers.BatchNormalization(axis=1, momentum=0.99, epsilon=0.001, center=True, scale=True)
-        self.pool1 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=1)
+        self.pool1 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=2)
         self.conv2 = tf.keras.layers.Conv2D(
             filters=96,             
             kernel_size=[3, 3],    
@@ -80,7 +95,7 @@ class AlexNet(tf.keras.Model):
         self.flatten = tf.keras.layers.Reshape(target_shape=(4 * 4 * 96,))
 
     def call(self,input):
-        input = tf.reshape(input, [-1, 32, 32, 1])  
+        input = tf.reshape(input, [-1, 32, 32, 3]) 
         x = self.conv1(input)   #[batch_size, 32, 32, 24]
         x = self.lrn1(x)        #[batch_size, 32, 32, 24]
         x = self.pool1(x)       #[batch_size, 16, 16, 24]
@@ -98,4 +113,25 @@ class AlexNet(tf.keras.Model):
         return x
 
     def predict(self, inputs):
-        logits = self(inputs)     
+        logits = self(inputs)
+        return tf.argmax(logits, axis=-1)     
+
+input_images = tf.placeholder(dtype=tf.float32, shape=[None, 32, 32, 3], name='input')
+label_images = tf.placeholder(dtype=tf.float32, shape=[None, 10], name='label')
+
+model = AlexNet()
+data_loader = DataLoader()
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+
+for batch_index in range(num_batches):
+    X, y = data_loader.get_batch(batch_size)
+    with tf.GradientTape() as tape:
+        y_logit_pred = model(tf.convert_to_tensor(X))
+        loss = tf.losses.sparse_softmax_cross_entropy(labels=y, logits=y_logit_pred)
+        print("batch %d: loss %f" % (batch_index, loss.numpy()))
+    grads = tape.gradient(loss, model.variables)
+    optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
+
+num_eval_samples = np.shape(data_loader.eval_labels)[0]
+y_pred = model.predict(data_loader.eval_data).numpy()
+print("Test accuracy: %f" % (sum(y_pred == data_loader.eval_labels) / num_eval_samples))
