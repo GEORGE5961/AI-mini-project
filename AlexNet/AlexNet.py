@@ -1,6 +1,9 @@
 import tensorflow as tf
 import pickle
 import numpy as np
+import time
+
+start = time.clock()
 
 def unpickle(file):
     
@@ -13,13 +16,13 @@ dict1 = unpickle('/Users/wuzhengyu/Desktop/github/AI-mini-project/AlexNet/cifar1
 
 x_tr =  dict['data']
 y_tr =  dict['labels']
-x_tr = np.array(x_tr,dtype=np.float32) #/ 255.0
-y_tr = np.array(y_tr)
+x_tr = np.asarray(x_tr,dtype=np.float32) / 255.0
+y_tr = np.asarray(y_tr,dtype=np.int32)
 
 x_ev = dict1['data'] 
 y_ev = dict1['labels']
-x_ev = np.array(x_ev, dtype=np.float32) #/ 255.0
-y_ev = np.array(y_ev, dtype=np.int32)
+x_ev = np.asarray(x_ev, dtype=np.float32) / 255.0
+y_ev = np.asarray(y_ev, dtype=np.int32)
 #xtr_rows = x_tr.reshape(x_tr.shape[0], 32 * 32 * 3) # xtr_rows becomes 50000 x 3072
 #xte_rows = x_te.reshape(x_te.shape[0], 32 * 32 * 3) 
 
@@ -29,8 +32,8 @@ def getOneHotLabel(label, depth):          #Usage: getOneHotLabel(label,depth=10
     for i in range(len(label)):
         m[i][label[i]] = 1
     return m
-print(getOneHotLabel(y_te,depth=10))
 '''
+
 
 class DataLoader():
     def __init__(self):
@@ -97,10 +100,10 @@ class AlexNet(tf.keras.Model):
     def call(self,input):
         input = tf.reshape(input, [-1, 32, 32, 3]) 
         x = self.conv1(input)   #[batch_size, 32, 32, 24]
-        x = self.lrn1(x)        #[batch_size, 32, 32, 24]
+        #x = self.lrn1(x)        #[batch_size, 32, 32, 24]
         x = self.pool1(x)       #[batch_size, 16, 16, 24]
         x = self.conv2(x)       #[batch_size, 16, 16, 96]
-        x = self.lrn2(x)        #[batch_size, 16, 16, 96]
+        #x = self.lrn2(x)        #[batch_size, 16, 16, 96]
         x = self.pool2(x)       #[batch_size, 8, 8, 96]
         x = self.conv3(x)       #[batch_size, 8, 8, 192]
         x = self.conv4(x)       #[batch_size, 8, 8, 192]
@@ -116,22 +119,36 @@ class AlexNet(tf.keras.Model):
         logits = self(inputs)
         return tf.argmax(logits, axis=-1)     
 
-input_images = tf.placeholder(dtype=tf.float32, shape=[None, 32, 32, 3], name='input')
-label_images = tf.placeholder(dtype=tf.float32, shape=[None, 10], name='label')
-
 model = AlexNet()
 data_loader = DataLoader()
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
+'''
 for batch_index in range(num_batches):
     X, y = data_loader.get_batch(batch_size)
     with tf.GradientTape() as tape:
-        y_logit_pred = model(tf.convert_to_tensor(X))
-        loss = tf.losses.sparse_softmax_cross_entropy(labels=y, logits=y_logit_pred)
-        print("batch %d: loss %f" % (batch_index, loss.numpy()))
-    grads = tape.gradient(loss, model.variables)
+        y_pred = model(X)
+        loss = tf.losses.sparse_softmax_cross_entropy(labels=y, logits=y_pred)
+        #loss = tf.reduce_mean(tf.square(y_pred - y))
+        #print("Batch %d: loss %f" % (batch_index, loss))       
+        grads = tape.gradient(loss, model.variables)
     optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
+'''
+input_images = tf.placeholder(dtype=tf.float32, shape=(batch_size, 32*32*3), name='input')
+label_images = tf.placeholder(dtype=tf.float32, shape=(batch_size), name='label')
+y_pred = model(input_images)
+X, y = data_loader.get_batch(batch_size)
+loss = tf.losses.sparse_softmax_cross_entropy(labels=y, logits=y_pred)
+train_op = optimizer.minimize(loss)
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    for i in range(1000):
+        sess.run(train_op, feed_dict={input_images: X, label_images: y})
+    #print(sess.run(model.variables))
+    num_eval_samples = np.shape(data_loader.eval_labels)[0]
+    y_pred = model.predict(data_loader.eval_data)
+    y_pred_np = y_pred.eval()
+    print("Test accuracy: %f" % (np.sum(y_pred_np == data_loader.eval_labels) / num_eval_samples))
 
-num_eval_samples = np.shape(data_loader.eval_labels)[0]
-y_pred = model.predict(data_loader.eval_data).numpy()
-print("Test accuracy: %f" % (sum(y_pred == data_loader.eval_labels) / num_eval_samples))
+elapsed = (time.clock() - start)
+print("Time used: %f seconds" % elapsed)
