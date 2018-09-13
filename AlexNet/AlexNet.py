@@ -61,17 +61,19 @@ class AlexNet(tf.keras.Model):
             filters=24,             # 卷积核数目
             kernel_size=[3, 3],     # 感受野大小
             padding="same",         # padding策略
-            activation=tf.nn.relu   # 激活函数
+            activation=tf.nn.relu,   # 激活函数
+            data_format="channels_last"
         )
-        self.lrn1 = tf.keras.layers.BatchNormalization(axis=1, momentum=0.99, epsilon=0.001, center=True, scale=True)
+        self.lrn1 = tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True)
         self.pool1 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=2)
         self.conv2 = tf.keras.layers.Conv2D(
             filters=96,             
             kernel_size=[3, 3],    
             padding="same",         
-            activation=tf.nn.relu   
+            activation=tf.nn.relu,
+            data_format="channels_last"   
         )
-        self.lrn2 = tf.keras.layers.BatchNormalization(axis=1, momentum=0.99, epsilon=0.001, center=True, scale=True)
+        self.lrn2 = tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True)
         self.pool2 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=2)
         self.conv3 = tf.keras.layers.Conv2D(
             filters=192,             
@@ -89,7 +91,7 @@ class AlexNet(tf.keras.Model):
             filters=96,             
             kernel_size=[3, 3],     
             padding="same",         
-            activation=tf.nn.relu   
+            activation=tf.nn.relu,   
         )
         self.pool5 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=2)
         self.fc6 = tf.keras.layers.Dense(units=1024, activation=tf.nn.relu)
@@ -100,10 +102,10 @@ class AlexNet(tf.keras.Model):
     def call(self,input):
         input = tf.reshape(input, [-1, 32, 32, 3]) 
         x = self.conv1(input)   #[batch_size, 32, 32, 24]
-        #x = self.lrn1(x)        #[batch_size, 32, 32, 24]
+        x = self.lrn1(x)        #[batch_size, 32, 32, 24]
         x = self.pool1(x)       #[batch_size, 16, 16, 24]
         x = self.conv2(x)       #[batch_size, 16, 16, 96]
-        #x = self.lrn2(x)        #[batch_size, 16, 16, 96]
+        x = self.lrn2(x)        #[batch_size, 16, 16, 96]
         x = self.pool2(x)       #[batch_size, 8, 8, 96]
         x = self.conv3(x)       #[batch_size, 8, 8, 192]
         x = self.conv4(x)       #[batch_size, 8, 8, 192]
@@ -142,7 +144,7 @@ loss = tf.losses.sparse_softmax_cross_entropy(labels=y, logits=y_pred)
 train_op = optimizer.minimize(loss)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    for i in range(1000):
+    for i in range(100):
         sess.run(train_op, feed_dict={input_images: X, label_images: y})
     #print(sess.run(model.variables))
     num_eval_samples = np.shape(data_loader.eval_labels)[0]
