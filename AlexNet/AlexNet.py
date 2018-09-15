@@ -136,19 +136,20 @@ for batch_index in range(num_batches):
     optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
 '''
 
-
 X_placeholder = tf.placeholder(dtype=tf.float32, shape=(batch_size, 32*32*3), name='input')
 y_placeholder = tf.placeholder(dtype=tf.int32, shape=(batch_size), name='label')
 y_pred = model(X_placeholder)
 loss = tf.losses.sparse_softmax_cross_entropy(labels=y_placeholder, logits=y_pred)
-tf.summary.scalar('loss', loss)
 train_op = optimizer.minimize(loss)
 
+tf.summary.scalar('loss', loss)
+merged = tf.summary.merge_all()
+
 with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-    merged = tf.summary.merge_all()
-    writer = tf.summary.FileWriter("/Users/wuzhengyu/Desktop/github/AI-mini-project/AlexNet/tensorboard",sess.graph)
-    for batch_index in range(10):
+    writer = tf.summary.FileWriter("./log", sess.graph)
+    init = tf.global_variables_initializer()
+    sess.run(init)  
+    for batch_index in range(2):
         X, y = data_loader.get_batch(batch_size)
         sess.run(train_op, feed_dict={X_placeholder: X, y_placeholder: y})
         result = sess.run(merged,feed_dict={X_placeholder: X, y_placeholder: y})
