@@ -129,24 +129,31 @@ optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 for batch_index in range(num_batches):
     X, y = data_loader.get_batch(batch_size)
     with tf.GradientTape() as tape:
-        y_pred = model(X)
+        y_pred = model(tf.convert_to_tensor(X))
         loss = tf.losses.sparse_softmax_cross_entropy(labels=y, logits=y_pred)
-        #loss = tf.reduce_mean(tf.square(y_pred - y))
         #print("Batch %d: loss %f" % (batch_index, loss))       
-        grads = tape.gradient(loss, model.variables)
+    grads = tape.gradient(loss, model.variables)
     optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
 '''
-input_images = tf.placeholder(dtype=tf.float32, shape=(batch_size, 32*32*3), name='input')
-label_images = tf.placeholder(dtype=tf.float32, shape=(batch_size), name='label')
-y_pred = model(input_images)
-X, y = data_loader.get_batch(batch_size)
-loss = tf.losses.sparse_softmax_cross_entropy(labels=y, logits=y_pred)
+
+
+X_placeholder = tf.placeholder(dtype=tf.float32, shape=(batch_size, 32*32*3), name='input')
+y_placeholder = tf.placeholder(dtype=tf.int32, shape=(batch_size), name='label')
+y_pred = model(X_placeholder)
+loss = tf.losses.sparse_softmax_cross_entropy(labels=y_placeholder, logits=y_pred)
+tf.summary.scalar('loss', loss)
 train_op = optimizer.minimize(loss)
+
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
-    for i in range(100):
-        sess.run(train_op, feed_dict={input_images: X, label_images: y})
-    #print(sess.run(model.variables))
+    merged = tf.summary.merge_all()
+    writer = tf.summary.FileWriter("/Users/wuzhengyu/Desktop/github/AI-mini-project/AlexNet/tensorboard",sess.graph)
+    for batch_index in range(10):
+        X, y = data_loader.get_batch(batch_size)
+        sess.run(train_op, feed_dict={X_placeholder: X, y_placeholder: y})
+        result = sess.run(merged,feed_dict={X_placeholder: X, y_placeholder: y})
+        writer.add_summary(result,batch_index)
+    
     num_eval_samples = np.shape(data_loader.eval_labels)[0]
     y_pred = model.predict(data_loader.eval_data)
     y_pred_np = y_pred.eval()
