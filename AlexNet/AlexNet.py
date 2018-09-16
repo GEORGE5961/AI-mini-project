@@ -62,7 +62,7 @@ class AlexNet(tf.keras.Model):
             kernel_size=[3, 3],     # 感受野大小
             padding="same",         # padding策略
             activation=tf.nn.relu,   # 激活函数
-            data_format="channels_last"
+            data_format="channels_last",
         )
         self.lrn1 = tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True)
         self.pool1 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=2)
@@ -71,7 +71,7 @@ class AlexNet(tf.keras.Model):
             kernel_size=[3, 3],    
             padding="same",         
             activation=tf.nn.relu,
-            data_format="channels_last"   
+            data_format="channels_last"  
         )
         self.lrn2 = tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True)
         self.pool2 = tf.keras.layers.MaxPool2D(pool_size=[2, 2], strides=2)
@@ -139,22 +139,18 @@ for batch_index in range(num_batches):
 X_placeholder = tf.placeholder(dtype=tf.float32, shape=(batch_size, 32*32*3), name='input')
 y_placeholder = tf.placeholder(dtype=tf.int32, shape=(batch_size), name='label')
 y_pred = model(X_placeholder)
-with tf.name_scope('loss'):
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=y_placeholder, logits=y_pred)
-    tf.summary.scalar("loss", loss)
+loss = tf.losses.sparse_softmax_cross_entropy(labels=y_placeholder, logits=y_pred)
+tf.summary.scalar("loss", loss)
 train_op = optimizer.minimize(loss)
-
-
 merged = tf.summary.merge_all()
 
 with tf.Session() as sess:
     writer = tf.summary.FileWriter("./log", sess.graph)
     init = tf.global_variables_initializer()
     sess.run(init)  
-    for batch_index in range(10):
+    for batch_index in range(20):
         X, y = data_loader.get_batch(batch_size)
-        sess.run([train_op, tf.contrib.summary.all_summary_ops()], feed_dict={X_placeholder: X, y_placeholder: y})
-        _, result = sess.run([train_op, merged],feed_dict={X_placeholder: X, y_placeholder: y})
+        _, result = sess.run([train_op,merged], feed_dict={X_placeholder: X, y_placeholder: y})
         writer.add_summary(result,batch_index)
     
     num_eval_samples = np.shape(data_loader.eval_labels)[0]
