@@ -148,7 +148,7 @@ with tf.Session() as sess:
     writer = tf.summary.FileWriter("./log", sess.graph)
     init = tf.global_variables_initializer()
     sess.run(init)  
-    for batch_index in range(20):
+    for batch_index in range(300):
         X, y = data_loader.get_batch(batch_size)
         _, result = sess.run([train_op,merged], feed_dict={X_placeholder: X, y_placeholder: y})
         writer.add_summary(result,batch_index)
