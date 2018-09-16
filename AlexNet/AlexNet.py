@@ -125,17 +125,6 @@ model = AlexNet()
 data_loader = DataLoader()
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
 
-'''
-for batch_index in range(num_batches):
-    X, y = data_loader.get_batch(batch_size)
-    with tf.GradientTape() as tape:
-        y_pred = model(tf.convert_to_tensor(X))
-        loss = tf.losses.sparse_softmax_cross_entropy(labels=y, logits=y_pred)
-        #print("Batch %d: loss %f" % (batch_index, loss))       
-    grads = tape.gradient(loss, model.variables)
-    optimizer.apply_gradients(grads_and_vars=zip(grads, model.variables))
-'''
-
 X_placeholder = tf.placeholder(dtype=tf.float32, shape=(batch_size, 32*32*3), name='input')
 y_placeholder = tf.placeholder(dtype=tf.int32, shape=(batch_size), name='label')
 y_pred = model(X_placeholder)
